@@ -1,7 +1,6 @@
 #ifndef FIELD_H
 #define FIELD_H
 
-#include "direction.h"
 #include <iostream>
 using namespace std;
 
@@ -17,6 +16,13 @@ typedef enum {
     X_PLAYER_WINS,
     DRAW
 } game_result_t;
+
+typedef enum {
+    VERTICAL = 0,
+    HORIZONTAL = 1,
+    DIAGONAL_PLUS = 2,
+    DIAGONAL_MINUS = 3
+} direction_t;
 
 class field
 {
@@ -38,16 +44,9 @@ public:
     {
         return col_idx;
     }
-    bool check_win();
 
     state_t state;
 
-    direction direction_tab[4]/* = {
-        direction(VERTICAL),
-        direction(HORIZONTAL),
-        direction(DIAGONAL_PLUS),
-        direction(DIAGONAL_MINUS)
-    }*/;
 
 
 private:
