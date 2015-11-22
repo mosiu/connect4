@@ -8,6 +8,7 @@ using namespace std;
 #define MAX_COL_HEIGHT  6
 #define MAP_CAPACITY    42
 
+
 gamemap::gamemap()
 {
     move_counter = 0;
@@ -39,12 +40,19 @@ gamemap::move(int column_input, state_t player)
         if_reprint = true;
     }
 
+    if (column_input == 7)
+    {
+        retract_move();
+        reprint();
+        return 0;
+    }
+
     int result = -100000;
 
     // two use cases of this function: 1st - normal play, 2nd - algorithm simulations
     if (player == FREE)
     {       // if player unspecified, execute move and then swich player
-        current_player = O_PLAYER;
+//        current_player = O_PLAYER;
         put_mark(column_input);
         result = get_single_heuristics();
     }
@@ -112,9 +120,9 @@ gamemap::read_player_move()
     {
         cin >> column_input;
     }
-    while((((column_input >= 1) && (column_input <= 7)) == false)   // input invalid
+    while((((column_input >= 1) && (column_input <= 8)) == false)   // input invalid
         ||  // or
-        (column_full[column_input-1]));  // column full
+        ((column_input == 8) ? false : column_full[column_input-1]));  // column full
     return column_input-1;
 }
 
@@ -138,12 +146,26 @@ gamemap::retract_move()
 {
     // restore previous state of field and column
     current_field->reset();
+    // if the column (from which the move has been retracted) was full, change it
+    int retracted_col_idx = current_field->get_col();
+    if (column_full[retracted_col_idx])
+        column_full[retracted_col_idx] = false;
+
     -- rows_occupied[current_field->get_col()];
 
     // restore previous state of field pointer and move counter
     current_field = read_last_field();
 
-    switch_player();
+    // once current_field is as before, set player to opposite of its state
+    switch(current_field->state)
+    {
+    case O_PLAYER:
+        current_player = X_PLAYER;
+        break;
+    case X_PLAYER:
+        current_player = O_PLAYER;
+        break;
+    }
 }
 
 inline

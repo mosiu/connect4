@@ -24,6 +24,7 @@ private:
     col_idx_t decide_move();
 
     const int max_depth;
+    col_idx_t best_move_idx;
 
 //    move_descriptor_t move_descriptor_tab[7];
 

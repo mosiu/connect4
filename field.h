@@ -11,13 +11,6 @@ typedef enum {
 } state_t;
 
 typedef enum {
-    CONTINUE,
-    O_PLAYER_WINS,
-    X_PLAYER_WINS,
-    DRAW
-} game_result_t;
-
-typedef enum {
     VERTICAL = 0,
     HORIZONTAL = 1,
     DIAGONAL_PLUS = 2,

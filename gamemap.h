@@ -11,7 +11,7 @@ public:
     gamemap();
     int move(int column_input = -1, state_t player = FREE);
     void retract_move();
-    void set_first_player(char player)
+    void set_player(char player)
     {
         (player == 'o') ? (current_player = O_PLAYER) : (current_player = X_PLAYER);
     }
@@ -21,11 +21,13 @@ public:
 
     int move_counter;
 
+    state_t current_player;
+
     bool column_full[7];
 
     void reprint();
 
-    state_t current_player;
+
 private:
 
     int get_single_heuristics();

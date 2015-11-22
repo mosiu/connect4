@@ -4,6 +4,8 @@
 #define O_PLAYER_TAB_IDX 0
 #define X_PLAYER_TAB_IDX 1
 
+//#define HEURISTICS_TEST
+
 minimax::minimax(int depth) : max_depth(depth)
 {
     for (int col_idx = 0; col_idx < 7; col_idx ++)
@@ -25,23 +27,27 @@ minimax::play()
 
     do
     {
+        current_game = gamemap();
+
         char player;
         cout << "Which player shall begin? (o/x)" << endl;
         cin >> player;
 
-        gamemap current_game;
-
-        current_game.set_first_player(player);
+        current_game.set_player(player);
         current_game.reprint();
 
 
         while(true)
         {
             int single_move_heuristics;
-
+#ifdef HEURISTICS_TEST
+            single_move_heuristics = current_game.move();
+            cout << endl << get_heuristics() << endl;
+#else
             if(current_game.current_player == X_PLAYER)
             {
-                single_move_heuristics = current_game.move(decide_move(), X_PLAYER);
+                iterative_move_search(max_depth, X_PLAYER);
+                single_move_heuristics = current_game.move(best_move_idx, X_PLAYER);
                 current_game.reprint();
             }
             else if (current_game.current_player == O_PLAYER)
@@ -52,6 +58,7 @@ minimax::play()
             {
                 break;
             }
+#endif
 
             // if somebody won
             if (single_move_heuristics <= -100000)
@@ -80,116 +87,71 @@ minimax::play()
     return 0;   // status: success
 }
 
-minimax::col_idx_t
-minimax::decide_move()
-{
-    int best_move_heuristics = -0x7FFFFFFF;
-    int best_move_idx;
-    for(int move_idx=0; move_idx<7; move_idx++)
-    {
-        int val = iterative_move_search(max_depth - 1, X_PLAYER);
-        if(val > best_move_heuristics)
-        {
-            best_move_heuristics = val;
-            best_move_idx = move_idx;
-        }
-    }
-    return best_move_idx;
-}
-
-/*minimax::col_idx_t
-minimax::find_best_move()
-{
-    // detect first possible move
-    int col_idx;
-    for(col_idx = 0; col_idx < 7; col_idx ++)
-    {
-        if ( !current_game.column_full[col_idx] )
-        {
-            break;
-        }
-    }
-
-    // now we have an idx of first free column
-    current.move(col_idx);
-    current_depth ++;   // first entry behind us
-    if (current_depth <= max_depth)
-        find_best_move();     // execute second entry
-
-    // now depth almost maximum
-
-
-//    move_descriptor_t some_move_tab[7];
-
-//    for(int move_idx = 0; move_idx < 7; move_idx ++)
+//minimax::col_idx_t
+//minimax::decide_move()
+//{
+//    int best_move_heuristics = -0x7FFFFFFF;
+//    int best_move_idx;
+//    for(int move_idx=0; move_idx<7; move_idx++)
 //    {
-//        get_heuristics();   // now the tab is prepared! NiahahahahAHAHAHAAAA!!
-//        if (future_game.current_player == O_PLAYER)
+//        int val = iterative_move_search(max_depth - 1, X_PLAYER);
+//        if(val > best_move_heuristics)
 //        {
-//            some_move_tab[move_idx] = find_maximum_move()->heuristics;    // cause this is MY move
-//        }
-//        else
-//        {
-//            some_move_tab[move_idx] = find_minimum_move()->heuristics;    // cause he will try to DESTROY me.
+//            best_move_heuristics = val;
+//            best_move_idx = move_idx;
 //        }
 //    }
-//    future_game.retract_move();
-
-
-//    if (future_game.current_player == O_PLAYER)
-//    {
-//        some_move_tab[move_idx] = find_maximum_move()->heuristics;    // cause this is MY move
-//    }
-//    else
-//    {
-//        some_move_tab[move_idx] = find_minimum_move()->heuristics;    // cause he will try to DESTROY me.
-//    }
-
-}*/
+//    return best_move_idx;
+//}
 
 int
 minimax::iterative_move_search(int depth, state_t player)
 {
     if (depth == 0)
     {
-        current_game.reprint();
+//        current_game.reprint();
         return get_heuristics(player);
     }
     if (player == X_PLAYER) // maximizing player
     {
-        int best_val = -0x7FFFFFFF;
+        int best_maxval = -0x7FFFFFFF;
         int val = 0;
         for (int move_idx = 0; move_idx < 7; move_idx++)
         {
-//            if (if_X_move_possible[move_idx])
+            if (!current_game.column_full[move_idx])
             {
                 current_game.move(move_idx, player);
 
                 val = iterative_move_search(depth-1, O_PLAYER);
-                best_val = max(best_val, val);
+                if(val > best_maxval)
+                {
+                    best_maxval = val;
+                    best_move_idx = move_idx;
+                }
 
                 current_game.retract_move();
             }
         }
-        return best_val;
+        return best_maxval;
     }
     else
     {
-        int best_val = 0x7FFFFFFF;
+        int best_minval = 0x7FFFFFFF;
         int val = 0;
         for (int move_idx = 0; move_idx < 7; move_idx++)
         {
-//            if (if_O_move_possible[move_idx])
+            if (!current_game.column_full[move_idx])
             {
                 current_game.move(move_idx, player);
 
                 val = iterative_move_search(depth-1, X_PLAYER);
-                best_val = min(best_val, val);
+                if(val < best_minval)
+                    best_minval = val;
 
                 current_game.retract_move();
             }
         }
-        return best_val;
+        return best_minval;
     }
 }
 
@@ -198,119 +160,44 @@ minimax::heuristics_t
 minimax::get_heuristics(state_t player)
 {
     // SIMULATION OF ALL POSSIBLE X_PLAYER MOVES
-    // result will be sum of all possible moves' heruistics
+    // sum of these moves' heruistics is added to result
     heuristics_t result = 0;
     for (int col_idx=0; col_idx < 7; col_idx ++)
     {
-        if(current_game.column_full[col_idx])
-        {
-            if (player == X_PLAYER)
-                if_X_move_possible[col_idx] = false;
-        }
-        else
+        if(!current_game.column_full[col_idx])
+//        {
+//            if (player == X_PLAYER)
+//                if_X_move_possible[col_idx] = false;
+//        }
+//        else
         {
             if (player == X_PLAYER)
                 if_X_move_possible[col_idx] = true;
             result += abs(current_game.move(col_idx, X_PLAYER));
+//            current_game.reprint();
             current_game.retract_move();
         }
     }
-    // SIMULATION OF ALL POSSIBLE X_PLAYER MOVES
-    // result will be sum of all possible moves' heruistics
+    // SIMULATION OF ALL POSSIBLE O_PLAYER MOVES
+    // sum of these moves' heuristics is subtracted from result
     for (int col_idx=0; col_idx < 7; col_idx ++)
     {
-        if(current_game.column_full[col_idx])
-        {
-            if (player == O_PLAYER)
-                if_O_move_possible[col_idx] = false;
-        }
-        else
+        if(!current_game.column_full[col_idx])
+//        {
+//            if (player == O_PLAYER)
+//                if_O_move_possible[col_idx] = false;
+//        }
+//        else
         {
             if (player == O_PLAYER)
                 if_O_move_possible[col_idx] = true;
             result -= abs(current_game.move(col_idx, O_PLAYER));
+//            current_game.reprint();
             current_game.retract_move();
         }
     }
     return result;  // result bigger than 0 means it's all right
 }
-
-// on given depth, compare map heuristics. Make sure you have something to compare.
-/*
-minimax::move_descriptor_t*
-minimax::find_minimum_move(bool parity)
-{
-    heuristics_t minimum_value = 0x7FFFFFFF;
-    move_descriptor_t* result;
-    for (col_idx = 0; col_idx <7; col_idx ++)
-    {
-        if(move_descriptor_tab[col_idx].if_move_possible)
-        {
-            if (move_descriptor_tab[col_idx].heuristics < minimum_value)
-            {
-                result = &move_descriptor_tab[col_idx];
-            }
-        }
-    }
-    return result;
-}
-
-minimax::move_descriptor_t*
-minimax::find_maximum_move(bool parity)
-{
-    heuristics_t maximum_value = -0x7FFFFFFF;
-    move_descriptor_t* result;
-    for (col_idx = 0; col_idx <7; col_idx ++)
-    {
-        if(move_descriptor_tab[col_idx].if_move_possible)
-        {
-            if (move_descriptor_tab[col_idx].heuristics < maximum_value)
-            {
-                result = &move_descriptor_tab[col_idx];
-            }
-        }
-    }
-    return result;
-}
-
-// on given depth, compare map heuristics. Make sure you have something to compare.
-minimax::move_descriptor_t*
-minimax::find_minimum(move_descriptor_t *move_tab)
-{
-    heuristics_t minimum_value = 0x7FFFFFFF;
-    move_descriptor_t* result;
-    for (col_idx = 0; col_idx <7; col_idx ++)
-    {
-        if(move_tab[col_idx].if_move_possible)
-        {
-            if (move_tab[col_idx].heuristics < minimum_value)
-            {
-                result = &move_tab[col_idx];
-            }
-        }
-    }
-    return result;
-}
-
-minimax::move_descriptor_t*
-minimax::find_maximum(move_descriptor_t *move_tab)
-{
-    heuristics_t maximum_value = -0x7FFFFFFF;
-    move_descriptor_t* result;
-    for (col_idx = 0; col_idx <7; col_idx ++)
-    {
-        if(move_tab[col_idx].if_move_possible)
-        {
-            if (move_tab[col_idx].heuristics < maximum_value)
-            {
-                result = &move_tab[col_idx];
-            }
-        }
-    }
-    return result;
-}
-*/
-
 
 minimax::~minimax()
 {
