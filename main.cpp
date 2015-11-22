@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 
     char ans;
 
-    minimax ai_game;
+    minimax ai_game(4);
     ai_game.play();
 
     a.quit();

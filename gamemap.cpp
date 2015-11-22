@@ -30,27 +30,42 @@ gamemap::gamemap()
 
 // returns heuristics
 int
-gamemap::wait_for_move(int column_input)
+gamemap::move(int column_input, state_t player)
 {
-    if (!column_input)
+    bool if_reprint = false;
+    if (column_input == -1)
     {
-        column_input = get_player_move();
+        column_input = read_player_move();
+        if_reprint = true;
     }
 
-    put_mark(column_input-1);
-    move_counter++;
+    int result = -100000;
 
-    int result = get_heuristics();
+    // two use cases of this function: 1st - normal play, 2nd - algorithm simulations
+    if (player == FREE)
+    {       // if player unspecified, execute move and then swich player
+        current_player = O_PLAYER;
+        put_mark(column_input);
+        result = get_single_heuristics();
+    }
+    else    // if player specified, call functions when current_player is as specified
+    {
+        current_player = player;
+        put_mark(column_input);
+        result = get_single_heuristics();
+    }
 
-    switch_current_player();
 
-    reprint();
+    switch_player();
+
+    if(if_reprint)
+        reprint();
 
     return result;
 }
 
 int
-gamemap::get_heuristics()
+gamemap::get_single_heuristics()
 {
 
     int move_heuristics = 0;
@@ -59,10 +74,10 @@ gamemap::get_heuristics()
     int diagonal_plus_component = 0;
     int diagonal_minus_component = 0;
     win_lock = false;   // prevents multiple win score addition in different directions
-    vertical_component = update_field_counters(VERTICAL, current_field);    // necessary before checking win
-    horizontal_component = update_field_counters(HORIZONTAL, current_field);
-    diagonal_plus_component = update_field_counters(DIAGONAL_PLUS, current_field);
-    diagonal_minus_component = update_field_counters(DIAGONAL_MINUS, current_field);
+    vertical_component = analyze_direction(VERTICAL, current_field);    // necessary before checking win
+    horizontal_component = analyze_direction(HORIZONTAL, current_field);
+    diagonal_plus_component = analyze_direction(DIAGONAL_PLUS, current_field);
+    diagonal_minus_component = analyze_direction(DIAGONAL_MINUS, current_field);
 
     if (current_player == X_PLAYER)
     {
@@ -78,7 +93,7 @@ gamemap::get_heuristics()
 }
 
 int
-gamemap::get_player_move()
+gamemap::read_player_move()
 {
     if(current_player == O_PLAYER)
     {
@@ -100,12 +115,55 @@ gamemap::get_player_move()
     while((((column_input >= 1) && (column_input <= 7)) == false)   // input invalid
         ||  // or
         (column_full[column_input-1]));  // column full
-    return column_input;
+    return column_input-1;
+}
+
+void
+gamemap::put_mark(int col_idx)
+{
+    set_current_field_ptr_and_save_previous(get_ptr_to_field_on_top_of_column(col_idx));
+    current_field -> set_player(current_player);
+
+    rows_occupied[col_idx] ++;
+
+    // marking columns as full
+    if (rows_occupied[col_idx] >= MAX_COL_HEIGHT)
+        column_full[col_idx] = true;
+
+}
+
+
+void
+gamemap::retract_move()
+{
+    // restore previous state of field and column
+    current_field->reset();
+    -- rows_occupied[current_field->get_col()];
+
+    // restore previous state of field pointer and move counter
+    current_field = read_last_field();
+
+    switch_player();
+}
+
+inline
+void
+gamemap::set_current_field_ptr_and_save_previous(field* new_current_field_ptr)
+{
+    current_field = new_current_field_ptr;
+    field_history[(++move_counter)-1] = current_field;
+}
+
+inline
+field*
+gamemap::read_last_field()
+{
+    return field_history[(--move_counter)-1];
 }
 
 // travel around current_field and update counters, then return current field heuristics
 int
-gamemap::update_field_counters(direction_t dir, field* center_field)
+gamemap::analyze_direction(direction_t dir, field* center_field)
 {
     int interval;
     switch (dir)
@@ -244,73 +302,14 @@ gtfo_2:
     int win_component = 0;
     if ((my_row_counter >= 4) && !win_lock)
     {
-        win_component = 10000;
+        win_component = 100000;
         win_lock = true;    // thou shall win in only one direction
     }
 
     int heuristics = width_component + row_component + win_component;
     return heuristics;
-
-    //row_flag = false;    // don't do it, cuz if the flag remained true so far, row beginning pointer is unset, and still the || in if(...) below returns true. That's good.
-//    for (int i=0; i<width_counter; i++)
-//    {
-//        if( (pointer+i*interval)->state == current_player )
-//        {
-//            (pointer+i*interval)->direction_tab[dir].free_counter = free_counter;
-//            (pointer+i*interval)->direction_tab[dir].my_disc_counter = my_disc_counter;
-//            (pointer+i*interval)->direction_tab[dir].width_counter = width_counter;
-//            if (((pointer+i*interval) == row_beginning_pointer) || row_flag)
-//            {
-//                //row_beginning_flag = true; // not necessary (updating fields separated by free space with row counter value
-//                // from the current update does not influence the game)
-//                row_flag = true;    // set on first entry
-//                (pointer+i*interval)->direction_tab[dir].my_row_counter = my_row_counter;
-//            }
-//        }
-//    }
 }
-/*
-// returns single move heuristics (to be added to general)
-int
-gamemap::predict_move(int column_input)  // CAUTION! Don't input full columns!
-{
-    int single_heuristics_value;
 
-    int draw_return_value;
-    int win_value;
-    if(current_player == X_PLAYER)
-    {
-        draw_return_value = 10;
-        win_value = 100;
-    }
-    else
-    {
-        draw_return_value = -10;
-        win_value = -100;
-    }
-    if (move_counter >= MAP_CAPACITY)
-        return draw_return_value;   // full map = no move
-
-
-    // GRUPA PRZYDATNYCH DLA ALGORYTMU
-    put_mark(column_input-1);
-    move_counter++;
-
-    update_field_counters(VERTICAL, current_field);    // necessary before checking win
-    update_field_counters(HORIZONTAL, current_field);
-    update_field_counters(DIAGONAL_PLUS, current_field);
-    update_field_counters(DIAGONAL_MINUS, current_field);
-
-    if ( (current_field->check_win() == true))
-        single_heuristics_value += win_value;
-
-    switch_current_player();
-
-    reprint();
-
-    return single_heuristics_value;
-}
-*/
 gamemap&
 gamemap::copy_gamestate(const gamemap& arg)
 {
@@ -333,23 +332,6 @@ gamemap::copy_gamestate(const gamemap& arg)
     return *this;
 }
 
-// determines and returns the current field (in reference form)
-void
-gamemap::put_mark(int col_idx)
-{
-
-    current_field = get_current_field_ptr(col_idx);
-
-    current_field -> set_player(current_player);
-
-    rows_occupied[col_idx] ++;
-
-    // marking columns as full
-    if (rows_occupied[col_idx] >= MAX_COL_HEIGHT)
-        column_full[col_idx] = true;
-
-}
-
 void
 gamemap::reprint()
 {
@@ -368,7 +350,7 @@ gamemap::reprint()
 }
 
 void
-gamemap::switch_current_player()
+gamemap::switch_player()
 {
     if(current_player == O_PLAYER)
     {
@@ -382,7 +364,7 @@ gamemap::switch_current_player()
 
 inline
 field*
-gamemap::get_current_field_ptr(int col_idx)
+gamemap::get_ptr_to_field_on_top_of_column(int col_idx)
 {
     return (&field_tab[get_row_idx(col_idx)][col_idx]);
 }

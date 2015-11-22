@@ -9,7 +9,8 @@ class gamemap
 {
 public:
     gamemap();
-    int wait_for_move(int column_input = 0);
+    int move(int column_input = -1, state_t player = FREE);
+    void retract_move();
     void set_first_player(char player)
     {
         (player == 'o') ? (current_player = O_PLAYER) : (current_player = X_PLAYER);
@@ -20,29 +21,34 @@ public:
 
     int move_counter;
 
+    bool column_full[7];
+
     void reprint();
 
     state_t current_player;
 private:
 
-    int get_heuristics();
+    int get_single_heuristics();
 
-    int get_player_move();
-    int update_field_counters(direction_t dir, field* center_field);
+    int read_player_move();
+    int analyze_direction(direction_t dir, field* center_field);
 
-    void switch_current_player();
+    void switch_player();
 
+    void set_current_field_ptr_and_save_previous(field *arg);
 
     void put_mark(int column);
 
-    inline field* get_current_field_ptr(int col_idx);
+    inline field* get_ptr_to_field_on_top_of_column(int col_idx);
     inline int get_row_idx(int col_idx);
-
+    inline void set_current_field_ptr_and_save_previous();
+    inline field* read_last_field();
     field field_tab[6][7];
 
     field* current_field;
 
-    bool column_full[7];
+    field* field_history[42];
+
     int rows_occupied[7];
 
 

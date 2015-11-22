@@ -44,6 +44,10 @@ public:
     {
         return col_idx;
     }
+    void reset()
+    {
+        state = FREE;
+    }
 
     state_t state;
 
