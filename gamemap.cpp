@@ -188,6 +188,7 @@ int
 gamemap::analyze_direction(direction_t dir, field* center_field)
 {
     int interval;
+    state_t player = center_field->state;
     switch (dir)
     {
     case VERTICAL:

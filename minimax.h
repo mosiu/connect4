@@ -19,7 +19,7 @@ private:
     typedef int col_idx_t;
     gamemap current_game;
 
-    heuristics_t get_heuristics(state_t player = FREE);
+    heuristics_t get_heuristics();
     int iterative_move_search(int depth, state_t player);
     col_idx_t decide_move();
 

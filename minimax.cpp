@@ -110,7 +110,7 @@ minimax::iterative_move_search(int depth, state_t player)
     if (depth == 0)
     {
 //        current_game.reprint();
-        return get_heuristics(player);
+        return get_heuristics();
     }
     if (player == X_PLAYER) // maximizing player
     {
@@ -120,9 +120,10 @@ minimax::iterative_move_search(int depth, state_t player)
         {
             if (!current_game.column_full[move_idx])
             {
-                current_game.move(move_idx, player);
+                val = current_game.move(move_idx, player);
 
-                val = iterative_move_search(depth-1, O_PLAYER);
+                // all above val operations are only meant to add win score to considered move
+                val += iterative_move_search(depth-1, O_PLAYER);
                 if(val > best_maxval)
                 {
                     best_maxval = val;
@@ -142,9 +143,10 @@ minimax::iterative_move_search(int depth, state_t player)
         {
             if (!current_game.column_full[move_idx])
             {
-                current_game.move(move_idx, player);
+                val = current_game.move(move_idx, player);
 
-                val = iterative_move_search(depth-1, X_PLAYER);
+                // all above val operations are only meant to add win score to considered move
+                val += iterative_move_search(depth-1, X_PLAYER);
                 if(val < best_minval)
                     best_minval = val;
 
@@ -157,24 +159,23 @@ minimax::iterative_move_search(int depth, state_t player)
 
 // write heuristics to subsequent move_tab descriptors
 minimax::heuristics_t
-minimax::get_heuristics(state_t player)
+minimax::get_heuristics()
 {
     // SIMULATION OF ALL POSSIBLE X_PLAYER MOVES
     // sum of these moves' heruistics is added to result
     heuristics_t result = 0;
+
     for (int col_idx=0; col_idx < 7; col_idx ++)
     {
+        heuristics_t single_score;
         if(!current_game.column_full[col_idx])
-//        {
-//            if (player == X_PLAYER)
-//                if_X_move_possible[col_idx] = false;
-//        }
-//        else
         {
-            if (player == X_PLAYER)
-                if_X_move_possible[col_idx] = true;
-            result += abs(current_game.move(col_idx, X_PLAYER));
-//            current_game.reprint();
+            single_score = abs(current_game.move(col_idx, X_PLAYER));
+
+            if (single_score >= 100000) // win score available only via iterative_move_search.
+                single_score -= 100000; // walking this way you won't get win score!
+
+            result += single_score;
             current_game.retract_move();
         }
     }
@@ -182,17 +183,15 @@ minimax::get_heuristics(state_t player)
     // sum of these moves' heuristics is subtracted from result
     for (int col_idx=0; col_idx < 7; col_idx ++)
     {
+        heuristics_t single_score;
         if(!current_game.column_full[col_idx])
-//        {
-//            if (player == O_PLAYER)
-//                if_O_move_possible[col_idx] = false;
-//        }
-//        else
         {
-            if (player == O_PLAYER)
-                if_O_move_possible[col_idx] = true;
-            result -= abs(current_game.move(col_idx, O_PLAYER));
-//            current_game.reprint();
+            single_score = abs(current_game.move(col_idx, O_PLAYER));
+
+            if (single_score >= 100000) // win score available only via iterative_move_search.
+                single_score -= 100000; // walking this way you won't get win score!
+
+            result -= single_score;
             current_game.retract_move();
         }
     }
